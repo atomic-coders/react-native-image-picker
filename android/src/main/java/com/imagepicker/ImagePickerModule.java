@@ -15,7 +15,9 @@ import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaScannerConnection;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
@@ -177,9 +179,9 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
     response = Arguments.createMap();
 
     if (!isCameraAvailable()) {
-        response.putString("error", "Camera not available");
-        callback.invoke(response);
-        return;
+      response.putString("error", "Camera not available");
+      callback.invoke(response);
+      return;
     }
 
     Activity currentActivity = getCurrentActivity();
@@ -257,7 +259,7 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
     } else {
       requestCode = REQUEST_LAUNCH_IMAGE_LIBRARY;
       libraryIntent = new Intent(Intent.ACTION_PICK,
-      MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+              MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
     }
 
     if (libraryIntent.resolveActivity(mReactContext.getPackageManager()) == null) {
@@ -307,25 +309,20 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
         uri = data.getData();
         break;
       case REQUEST_LAUNCH_VIDEO_LIBRARY:
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.GINGERBREAD_MR1) {
-          MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-          retriever.setDataSource(data.getData().getPath());
-          String time = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-          long timeInMillis = Long.parseLong(time);
-          long duration = timeInMillis / 1000;
-          long hours = duration / 3600;
-          long minutes = (duration - hours * 3600) / 60;
-          long seconds = duration - (hours * 3600 + minutes * 60);
-          response.putString("duration", seconds + "");
-        }
+        String libraryVideoPath = getRealPathFromURI(data.getData());
         response.putString("uri", data.getData().toString());
-        response.putString("path", getRealPathFromURI(data.getData()));
+        response.putString("path", libraryVideoPath);
+        setVideoDuration(libraryVideoPath);
+        setVideoThumbnail(libraryVideoPath);
         mCallback.invoke(response);
         mCallback = null;
         return;
       case REQUEST_LAUNCH_VIDEO_CAPTURE:
+        String capturedVideoPath = getRealPathFromURI(data.getData());
         response.putString("uri", data.getData().toString());
-        response.putString("path", getRealPathFromURI(data.getData()));
+        response.putString("path", capturedVideoPath);
+        setVideoDuration(capturedVideoPath);
+        setVideoThumbnail(capturedVideoPath);
         this.fileScan(response.getString("path"));
         mCallback.invoke(response);
         mCallback = null;
@@ -426,11 +423,11 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
       if (resized == null) {
         response.putString("error", "Can't resize the image");
       } else {
-         realPath = resized.getAbsolutePath();
-         uri = Uri.fromFile(resized);
-         BitmapFactory.decodeFile(realPath, options);
-         response.putInt("width", options.outWidth);
-         response.putInt("height", options.outHeight);
+        realPath = resized.getAbsolutePath();
+        uri = Uri.fromFile(resized);
+        BitmapFactory.decodeFile(realPath, options);
+        response.putInt("width", options.outWidth);
+        response.putInt("height", options.outHeight);
       }
     }
 
@@ -500,7 +497,7 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
 
   private boolean isCameraAvailable() {
     return mReactContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)
-      || mReactContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
+            || mReactContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
   }
 
   private String getRealPathFromURI(Uri uri) {
@@ -586,7 +583,7 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
     Bitmap photo = BitmapFactory.decodeFile(realPath, options);
 
     if (photo == null) {
-        return null;
+      return null;
     }
 
     Bitmap scaledphoto = null;
@@ -729,6 +726,45 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
     videoDurationLimit = 0;
     if (options.hasKey("durationLimit")) {
       videoDurationLimit = options.getInt("durationLimit");
+    }
+  }
+
+  private void setVideoDuration(String path) {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.GINGERBREAD_MR1) {
+      MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+      retriever.setDataSource(path);
+      String time = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+      long timeInMillis = Long.parseLong(time);
+      long duration = timeInMillis / 1000;
+      long hours = duration / 3600;
+      long minutes = (duration - hours * 3600) / 60;
+      long seconds = duration - (hours * 3600 + minutes * 60);
+      response.putString("duration", seconds + "");
+    }
+  }
+
+  private void setVideoThumbnail(String path) {
+    if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.FROYO) {
+      Bitmap bitmap = ThumbnailUtils.createVideoThumbnail(path, MediaStore.Video.Thumbnails.MINI_KIND);
+      FileOutputStream out = null;
+      try {
+        File file = File.createTempFile("video-thumbnail", "jpg");
+        out = new FileOutputStream(file);
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+        response.putString("thumb", file.getAbsolutePath());
+      } catch (Exception e) {
+        e.printStackTrace();
+      } finally {
+        try {
+          if (out != null) {
+            out.close();
+          }
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+
+
     }
   }
 
