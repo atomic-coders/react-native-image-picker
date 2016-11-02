@@ -6,51 +6,32 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
+import android.media.MediaMetadataRetriever;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.util.Base64;
 import android.util.Log;
-import android.widget.ArrayAdapter;
 import android.webkit.MimeTypeMap;
-import android.content.pm.PackageManager;
-import android.media.MediaScannerConnection;
+import android.widget.ArrayAdapter;
+import com.facebook.react.bridge.*;
 
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.Callback;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.ReadableArray;
-import com.facebook.react.bridge.WritableMap;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.util.UUID;
+import java.util.*;
 
 interface ActivityResultInterface {
   void callback(int requestCode, int resultCode, Intent data);
@@ -326,6 +307,17 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
         uri = data.getData();
         break;
       case REQUEST_LAUNCH_VIDEO_LIBRARY:
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.GINGERBREAD_MR1) {
+          MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+          retriever.setDataSource(data.getData().getPath());
+          String time = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+          long timeInMillis = Long.parseLong(time);
+          long duration = timeInMillis / 1000;
+          long hours = duration / 3600;
+          long minutes = (duration - hours * 3600) / 60;
+          long seconds = duration - (hours * 3600 + minutes * 60);
+          response.putString("duration", seconds + "");
+        }
         response.putString("uri", data.getData().toString());
         response.putString("path", getRealPathFromURI(data.getData()));
         mCallback.invoke(response);
