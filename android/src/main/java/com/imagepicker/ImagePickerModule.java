@@ -748,7 +748,7 @@ public class ImagePickerModule extends ReactContextBaseJavaModule {
       Bitmap bitmap = ThumbnailUtils.createVideoThumbnail(path, MediaStore.Video.Thumbnails.MINI_KIND);
       FileOutputStream out = null;
       try {
-        File file = File.createTempFile("video-thumbnail", "jpg");
+        File file = File.createTempFile("video-thumbnail", ".jpg");
         out = new FileOutputStream(file);
         bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
         response.putString("thumb", file.getAbsolutePath());
