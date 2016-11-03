@@ -453,7 +453,32 @@ RCT_EXPORT_METHOD(showImagePicker:(NSDictionary *)options callback:(RCTResponseS
             if (videoRefURL.absoluteString) {
                 [self.response setObject:videoRefURL.absoluteString forKey:@"origURL"];
             }
-            
+
+            // Save video thumbnail to a file
+
+            AVURLAsset *asset1 = [[AVURLAsset alloc] initWithURL:videoURL options:nil];
+            AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset1];
+            generator.appliesPreferredTrackTransform = YES;
+
+            //Set the time and size of thumbnail for image
+            NSError *err = NULL;
+            CMTime thumbTime = CMTimeMakeWithSeconds(0,30);
+            CGSize maxSize = CGSizeMake(425,355);
+            generator.maximumSize = maxSize;
+
+            CGImageRef imgRef = [generator copyCGImageAtTime:thumbTime actualTime:NULL error:&err];
+            UIImage *thumbnail = [[UIImage alloc] initWithCGImage:imgRef];
+
+            //And you can save the image to the DocumentDirectory
+            NSData *data = UIImagePNGRepresentation(thumbnail);
+
+            //Path for the documentDirectory
+            NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+            NSString *documentsDirectory = [paths objectAtIndex:0];
+            NSString *thumbPath = [documentsDirectory stringByAppendingPathComponent:@"video-thumbnail.jpg"];
+            [data writeToFile:thumbPath atomically:YES];
+            [self.response setObject:thumbPath forKey:@"thumb"];
+
             NSDictionary *storageOptions = [self.options objectForKey:@"storageOptions"];
             if (storageOptions && [[storageOptions objectForKey:@"cameraRoll"] boolValue] == YES && self.picker.sourceType == UIImagePickerControllerSourceTypeCamera) {
                 ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
