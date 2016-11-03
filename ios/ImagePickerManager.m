@@ -479,6 +479,12 @@ RCT_EXPORT_METHOD(showImagePicker:(NSDictionary *)options callback:(RCTResponseS
             [data writeToFile:thumbPath atomically:YES];
             [self.response setObject:thumbPath forKey:@"thumb"];
 
+
+            // Video duration
+            CMTime time = [asset1 duration];
+            int seconds = ceil(time.value/time.timescale);
+            [self.response setObject:[NSNumber numberWithInt:seconds] forKey:@"duration"];
+
             NSDictionary *storageOptions = [self.options objectForKey:@"storageOptions"];
             if (storageOptions && [[storageOptions objectForKey:@"cameraRoll"] boolValue] == YES && self.picker.sourceType == UIImagePickerControllerSourceTypeCamera) {
                 ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
